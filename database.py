@@ -3,6 +3,8 @@ from configparser import ConfigParser
 from mysql.connector.connection import MySQLCursor
 from mysql.connector.connection import MySQLConnection
 
+user_id = 1 # Placeholder until I implement future methods
+
 def read_config_file(filename : str, section : str):
     parser = ConfigParser()
     parser.read(filename)
@@ -25,7 +27,7 @@ def create_connection() -> mysql.connector.connection.MySQLConnection:
         raise mysql.connector.Error
     
 def create_table(cursor : MySQLCursor):
-    cursor.execute('DROP TABLE IF EXISTS Booking;\n')
+    cursor.execute('DROP TABLE IF EXISTS Booking;')
     booking_table = ('CREATE TABLE Booking(\n'
                      '  booking_id INT PRIMARY KEY AUTO_INCREMENT,\n'
                      '  passenger_id INT,\n'
@@ -43,11 +45,15 @@ def main(connection : MySQLConnection, cursor : MySQLCursor):
     while True:
         choice = input('What would you like to do?\n'
                        '    A. Create a booking.\n'
-                       '    B. View a booking.\n'
+                       '    B. View your bookings.\n'
                        '    C. Delete a booking.\n'
                        'Type another character to exit this menu.\n')
-        if choice == "a":
+        if choice.lower() == "a":
             create_booking(cursor)
+        elif choice.lower() == "b":
+            view_bookings(cursor)
+        elif choice.lower() == "c":
+            delete_booking(cursor)
         else:
             print('Have a nice day!\n')
             break
@@ -55,16 +61,18 @@ def main(connection : MySQLConnection, cursor : MySQLCursor):
 
 def create_booking(cursor : MySQLCursor):
     flight_ids = get_flight_ids(cursor)
-    print(flight_ids)
     print(f"Here are the current flights: \n")
     print_flights(cursor)
     while True:
         booking = input("Which flight would you like to book for? ")
-        if int(booking) in flight_ids:
+        if booking == "c":
+            print("Booking Cancelled.")
+            break
+        elif int(booking) in flight_ids:
             insert_booking(cursor, booking)
             break
         else:
-            print("Not a valid flight id. Please try again.\n")
+            print('Not a valid flight id. Please try again or type "c" to cancel.\n')
     print("Booking successfully created!\n")
 
 def get_flight_ids(cursor: MySQLCursor) -> list[int]:
@@ -82,7 +90,33 @@ def print_flights(cursor : MySQLCursor):
 
 def insert_booking(cursor : MySQLCursor, flight_booked : int):
     cursor.execute('INSERT INTO Booking(passenger_id, flight_id)'
-                   f'VALUES (1, {flight_booked})')
+                   f'VALUES ({user_id}, {flight_booked})')
+
+def view_bookings(cursor : MySQLCursor):
+    cursor.execute('SELECT booking_id, alocation, takeoff, (SELECT alocation FROM Airport WHERE to_airport = airport_id)\n'
+                   'FROM Booking JOIN Flight USING (flight_id) JOIN Flight_Schedule USING (flight_id) JOIN Airport USING (airport_id)\n'
+                   f'WHERE passenger_id = {user_id};')
+    for row in cursor.fetchall():
+        print(f"Booking Id: {row[0]}, Location: {row[1]}, Destination: {row[3]}, DateTime: {row[2]}")
+    print("\n")
+
+def delete_booking(cursor: MySQLCursor):
+    user_bookings = get_booking_ids(cursor) 
+    print(user_bookings)
+    while True:
+        booking = input("What's the id of the booking you would like to delete? ")
+        if booking == "c":
+            print("Deletion cancelled.")
+            break
+        elif int(booking) in user_bookings[0]:
+            cursor.execute(f'DELETE FROM Booking WHERE Booking_id = {booking}')
+            break
+        else:
+            print('Not a valid id. Please try again or type "c" to cancel.')
+
+def get_booking_ids(cursor : MySQLCursor):
+    cursor.execute(f'SELECT booking_id FROM Booking WHERE passenger_id = {user_id}')
+    return cursor.fetchall()
 
 if __name__ == '__main__':
     try:

@@ -1,8 +1,7 @@
 import mysql.connector
 from configparser import ConfigParser
-from mysql.connector.connection import MySQLCursor 
-
-passengerId : int
+from mysql.connector.connection import MySQLCursor
+from mysql.connector.connection import MySQLConnection
 
 def read_config_file(filename : str, section : str):
     parser = ConfigParser()
@@ -40,31 +39,46 @@ def create_table(cursor : MySQLCursor):
                      ');\n')
     cursor.execute(booking_table)
 
-def main(cursor : MySQLCursor):
+def main(connection : MySQLConnection, cursor : MySQLCursor):
     while True:
-        choice = input('Hello! What would you like to do?'
-                       '    A. Create a booking.'
-                       '    B. View a booking.'
-                       '    C. Delete a booking.'
+        choice = input('What would you like to do?\n'
+                       '    A. Create a booking.\n'
+                       '    B. View a booking.\n'
+                       '    C. Delete a booking.\n'
                        'Type another character to exit this menu.\n')
         if choice == "a":
             create_booking(cursor)
         else:
             print('Have a nice day!\n')
             break
+        connection.commit()
 
 def create_booking(cursor : MySQLCursor):
-    flights = get_flights(cursor)
-    print(f"Here are the current flights: \n{flights}")
-    booking = input("Which flight would you like to book for? ")
-    insert_booking(cursor, booking)
+    flight_ids = get_flight_ids(cursor)
+    print(flight_ids)
+    print(f"Here are the current flights: \n")
+    print_flights(cursor)
+    while True:
+        booking = input("Which flight would you like to book for? ")
+        if int(booking) in flight_ids:
+            insert_booking(cursor, booking)
+            break
+        else:
+            print("Not a valid flight id. Please try again.\n")
+    print("Booking successfully created!\n")
 
-def get_flights(cursor : MySQLCursor) -> str:
-    flights = ""
-    cursor.execute('SELECT * FROM Flight;')
+def get_flight_ids(cursor: MySQLCursor) -> list[int]:
+    ids = []
+    cursor.execute('SELECT flight_id FROM Flight;')
     for row in cursor.fetchall():
-        flights + f'Flight id: {row[0]}, time: {row[1]}, to_airport: {row[3]}\n'
-    return flights
+        ids.append(row[0])
+    return ids
+    
+def print_flights(cursor : MySQLCursor):
+    cursor.execute('SELECT flight_id, alocation, takeoff, (SELECT alocation FROM Airport WHERE to_airport = airport_id)\n' 
+                   'FROM Flight JOIN Flight_Schedule USING (flight_id) JOIN Airport USING (airport_id);')
+    for row in cursor.fetchall():
+        print(f"Id: {row[0]}, Location: {row[1]}, Destination: {row[3]}, Date and Time: {row[2]}")
 
 def insert_booking(cursor : MySQLCursor, flight_booked : int):
     cursor.execute('INSERT INTO Booking(passenger_id, flight_id)'
@@ -78,6 +92,6 @@ if __name__ == '__main__':
     finally:
         cursor = connection.cursor()
         create_table(cursor)
-        main(cursor)
+        main(connection, cursor)
         cursor.close()
         connection.close()

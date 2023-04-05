@@ -13,7 +13,7 @@ class bookingProcessor:
             try:
                 booking = int(input("Which flight would you like to book for? "))
                 if booking == -1:
-                    print("Booking Cancelled.")
+                    print("Booking Cancelled.\n")
                     break
                 elif booking in flight_ids:
                     self.insert_booking(booking)
@@ -32,21 +32,21 @@ class bookingProcessor:
         return ids
     
     def print_flights(self):
-        self.cursor.execute('SELECT flight_id, alocation, takeoff, (SELECT alocation FROM Airport WHERE to_airport = airport_id)\n' 
-                            'FROM Flight JOIN Flight_Schedule USING (flight_id) JOIN Airport USING (airport_id);')
+        self.cursor.execute('SELECT F.flight_id, alocation, takeoff, (SELECT alocation FROM Airport WHERE to_airport = airport_id)\n' 
+                            'FROM Flight AS F JOIN Flight_Schedule USING (flight_id) JOIN Airport USING (airport_id);')
         for row in self.cursor.fetchall():
             print(f"Id: {row[0]}, Location: {row[1]}, Destination: {row[3]}, Date and Time: {row[2]}")
 
     def insert_booking(self, flight_booked : int):
         self.cursor.execute('INSERT INTO Booking(passenger_id, flight_id)'
-                       f'VALUES ({self.user_id}, {flight_booked})')
+                           f'VALUES ({self.user_id}, {flight_booked})')
 
     def view_bookings(self):
         self.cursor.execute('SELECT booking_id, alocation, takeoff, (SELECT alocation FROM Airport WHERE to_airport = airport_id)\n'
                             'FROM Booking JOIN Flight USING (flight_id) JOIN Flight_Schedule USING (flight_id) JOIN Airport USING (airport_id)\n'
                             f'WHERE passenger_id = {self.user_id};')
         for row in self.cursor.fetchall():
-            print(f"Booking Id: {row[0]}, Location: {row[1]}, Destination: {row[3]}, DateTime: {row[2]}")
+            print(f"Booking Id: {row[0]}, Location: {row[1]}, Destination: {row[3]}, Date and Time: {row[2]}")
         print("\n")
 
     def delete_booking(self):
@@ -58,11 +58,11 @@ class bookingProcessor:
             try:
                 booking = int(input("What's the id of the booking you would like to delete? "))
                 if booking == -1:
-                    print("Deletion cancelled.")
+                    print("Deletion cancelled.\n")
                     break
                 elif booking in user_bookings[0]:
                     self.cursor.execute(f'DELETE FROM Booking WHERE Booking_id = {booking}')
-                    print('Booking successfully deleted.')
+                    print('Booking successfully deleted.\n')
                     break
                 else:
                     print('Not a valid id. Please try again or type "-1" to cancel.')

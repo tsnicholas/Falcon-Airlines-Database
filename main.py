@@ -1,3 +1,4 @@
+import random
 import mysql.connector
 from configparser import ConfigParser
 from mysql.connector.connection import MySQLConnection
@@ -24,7 +25,12 @@ def create_connection() -> MySQLConnection:
         return conn
     else:
         raise mysql.connector.Error
-    
+
+def connect_to_database(connection : MySQLConnection, cursor : MySQLCursor):
+    cursor.execute('CREATE DATABASE IF NOT EXISTS falconAirlines;')
+    cursor.execute('USE falconAirlines;')
+    connection.commit()
+
 def create_tables(connection : MySQLConnection, cursor : MySQLCursor):
     cursor.execute('CREATE TABLE IF NOT EXISTS Passenger(\n'
                    '    passenger_id INT PRIMARY KEY AUTO_INCREMENT,\n'
@@ -33,7 +39,7 @@ def create_tables(connection : MySQLConnection, cursor : MySQLCursor):
     connection.commit()
     cursor.execute('CREATE TABLE IF NOT EXISTS Airport(\n'
                    '    airport_id INT PRIMARY KEY AUTO_INCREMENT,\n'
-                   '    alocation TEXT\n'
+                   '    alocation VARCHAR(225) UNIQUE\n'
                    ');\n')
     connection.commit()
     cursor.execute('CREATE TABLE IF NOT EXISTS Flight(\n'
@@ -69,34 +75,36 @@ def create_tables(connection : MySQLConnection, cursor : MySQLCursor):
                    ');\n')
     connection.commit()
 
-# To Do: Randomize this data.
 def populate_tables(connection : MySQLConnection, cursor : MySQLCursor):
     cursor.execute("INSERT INTO Airport(alocation)\n"
-                   "VALUES ('Indianapolis, IN'),\n"
-                   "       ('Detriot, MI'),\n"
-                   "       ('Chicago, IL'),\n"
-                   "       ('Dallas, TX'),\n"
-                   "       ('Dayton, OH');\n")
+                   "VALUES ('Indianapolis, IN'), ('Detriot, MI'), ('Chicago, IL'), ('Dallas, TX'), ('Dayton, OH'), \n"
+                   "       ('New York, NY'), ('Miami, FL'), ('Las Vegas, NV'), ('San Francisco, CA'), ('Nashville, TN'),\n"
+                   "       ('Salt Lake City, UT'), ('Denver, CO'), ('Philadelphia, PA'), ('Springfield, OR')\n"
+                   "            ON DUPLICATE KEY UPDATE alocation = alocation;\n")
     connection.commit()
-    cursor.execute("INSERT INTO Flight(takeoff, to_airport)\n"
-                   "VALUES ('2023-04-18 12:00:00', 1),\n"
-                   "       ('2023-04-19 05:00:00', 2),\n"
-                   "       ('2023-04-23 13:30:00', 3),\n"
-                   "       ('2023-04-10 07:45:00', 4),\n"
-                   "       ('2023-04-20 04:20:00', 5);\n")
+    # We want to make sure the number doesn't exceed the amount of airports in randomizing the destination's id
+    cursor.execute("SELECT COUNT(airport_id) FROM Airport;")
+    num_of_airports = int(cursor.fetchall()[0][0])
+    cursor.execute(randomize_flights(num_of_airports))
     connection.commit()
-    cursor.execute("INSERT INTO Flight_Schedule(airport_id, flight_id)\n"
-                   "VALUES (1, 4), (2, 5), (3, 4), (4, 2), (5, 1);\n")
+    # We want the most recent flight ids and use them in order. 
+    # Otherwise, a flight can come from more than one airport, which is impossible.
+    cursor.execute("SELECT flight_id\nFROM Flight\nORDER BY flight_id DESC LIMIT 5;\n")
+    new_flight_ids = cursor.fetchall()
+    cursor.execute(randomize_schedule(num_of_airports, new_flight_ids))
     connection.commit()
-    cursor.execute("INSERT INTO Passenger(Pname)\n"
-                   "VALUES ('Jerry Smith'),\n"
-                   "       ('Rick Sanchez'),\n"
-                   "       ('Summer Smith'),\n"
-                   "       ('Sponebob Squarepants'),\n"
-                   "       ('Michael Bay'),\n"
-                   "       ('Rin Tohsaka'),\n"
-                   "       ('Miku Hatsune');\n")
-    connection.commit()
+
+def randomize_flights(num_of_airports : int) -> str:
+    prompt = "INSERT INTO Flight(takeoff, to_airport)\nVALUES "
+    for i in range(num_of_airports):
+        prompt += f"('2023-04-{random.randrange(1, 31)} {random.randrange(6, 18)}:00:00', {random.randrange(1, num_of_airports)}),\n"
+    return prompt[0:len(prompt) - 2] + ";\n"
+
+def randomize_schedule(num_of_airports : int, new_flight_ids) -> str:
+    prompt = "INSERT INTO Flight_Schedule(airport_id, flight_id)\nVALUES "
+    for row in new_flight_ids:
+        prompt += f"({random.randrange(1, num_of_airports)}, {row[0]}),\n"
+    return prompt[0:len(prompt) - 2] + ";\n"
 
 def get_userId(connection : MySQLConnection, cursor : MySQLCursor) -> int:
     name = input("What's your first and last name? ")
@@ -137,6 +145,7 @@ if __name__ == '__main__':
     try:
         connection = create_connection()
         cursor = connection.cursor()
+        connect_to_database(connection, cursor)
         create_tables(connection, cursor)
         populate_tables(connection, cursor)
         user_id = get_userId(connection, cursor)

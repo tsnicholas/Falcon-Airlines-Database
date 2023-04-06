@@ -7,7 +7,7 @@ In order to run this program, you must have python and mysql installed on your c
 How to install:
 1. Download the executable file and the database.ini file.
 2. Make sure both are present in the same folder, otherwise the program will crash upon executing.
-3. Replace the username and password with your mysql's login information in database.ini
+3. Replace the username and password with your mysql's login information in database.ini using a text editor or IDE
 4. Execute the program and follow the instructions.
 
 Dependencies:

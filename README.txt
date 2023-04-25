@@ -14,3 +14,9 @@ Dependencies:
 - Python 3
 - MySQL
 - database.ini (with your login information)
+
+What I learned:
+I learned that Python can interact with MySQL using pyconnection and can execute MySQL code within itself rather than having to make seperate MySQL scripts.
+Perhaps it's much cleaner to make it into a seperate MySQL script that gets parsed, but it's still cool to see a programming language interacting with another one.
+I also learned how to parse config files in order to enter the database. Using a config file might be helpful if I get serious about hiding sensitive information.
+
